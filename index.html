@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approval Confirmation</title>
+    <title>Request Response Confirmation</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,6 +22,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             max-width: 500px;
+            width: 90%;
         }
         h1 {
             color: #333;
@@ -45,13 +46,16 @@
             100% { transform: rotate(360deg); }
         }
         .success-checkmark {
-            display: none;
             color: #4CAF50;
             font-size: 60px;
             margin: 20px auto;
         }
+        .denial-icon {
+            color: #FF9800;
+            font-size: 60px;
+            margin: 20px auto;
+        }
         .error-icon {
-            display: none;
             color: #F44336;
             font-size: 60px;
             margin: 20px auto;
@@ -59,10 +63,7 @@
         .processing-state {
             display: block;
         }
-        .success-state {
-            display: none;
-        }
-        .error-state {
+        .approval-state, .denial-state, .error-state {
             display: none;
         }
     </style>
@@ -73,20 +74,28 @@
         
         <!-- Processing State -->
         <div id="processingState" class="processing-state">
-            <p class="message">Your request is being processed...</p>
+            <p class="message">Your response is being processed...</p>
             <div class="loader"></div>
-            <p id="processingStatus">Submitting approval...</p>
+            <p id="processingStatus">Submitting your response...</p>
         </div>
         
-        <!-- Success State -->
-        <div id="successState" class="success-state">
+        <!-- Approval State -->
+        <div id="approvalState" class="approval-state">
             <p class="message">Your approval has been successfully processed!</p>
             <div class="success-checkmark">✓</div>
+            <p>The request has been approved and the requester will be notified.</p>
+        </div>
+        
+        <!-- Denial State -->
+        <div id="denialState" class="denial-state">
+            <p class="message">Your denial has been successfully processed!</p>
+            <div class="denial-icon">✗</div>
+            <p>The request has been denied and the requester will be notified.</p>
         </div>
         
         <!-- Error State -->
         <div id="errorState" class="error-state">
-            <p class="message">There was an issue processing your approval.</p>
+            <p class="message">There was an issue processing your response.</p>
             <div class="error-icon">⚠</div>
             <p id="errorMessage">Please contact support for assistance.</p>
         </div>
@@ -104,7 +113,8 @@
         // Function to show specific state and hide others
         function showState(stateToShow) {
             document.getElementById('processingState').style.display = 'none';
-            document.getElementById('successState').style.display = 'none';
+            document.getElementById('approvalState').style.display = 'none';
+            document.getElementById('denialState').style.display = 'none';
             document.getElementById('errorState').style.display = 'none';
             
             document.getElementById(stateToShow).style.display = 'block';
@@ -114,19 +124,29 @@
         const recordID = getUrlParameter('recordID');
         const override = getUrlParameter('override');
         const timestamp = getUrlParameter('timestamp');
+        const action = getUrlParameter('action') || 'approve'; // Default to approve if not specified
         
         // Initially show processing state only
         showState('processingState');
         
-        // Construct the Power Automate URL with parameters
-        const powerAutomateUrl = 'https://prod-46.westus.logic.azure.com/workflows/bd5f6e1df25f4713aa11684c72ec246f/triggers/manual/paths/invoke';
+        // Determine which Power Automate flow to call based on action
+        let powerAutomateUrl;
+        if (action === 'deny') {
+            powerAutomateUrl = 'https://prod-146.westus.logic.azure.com/workflows/36b18ccb95474817876b6495ebb25b0c/triggers/manual/paths/invoke';
+            document.getElementById('processingStatus').textContent = 'Submitting denial...';
+        } else {
+            powerAutomateUrl = 'https://prod-46.westus.logic.azure.com/workflows/bd5f6e1df25f4713aa11684c72ec246f/triggers/manual/paths/invoke';
+            document.getElementById('processingStatus').textContent = 'Submitting approval...';
+        }
         
         // Prepare the query parameters
         const queryParams = new URLSearchParams({
             'api-version': '2016-06-01',
             'sp': '/triggers/manual/run',
             'sv': '1.0',
-            'sig': 'pk_Kb8y4_TClsws5IXzViN2uAH2axS7VrdwuCncELVA',
+            'sig': action === 'deny' 
+                ? 'TWstSQiMz1JZ5O26U5kyRjcCjqesfvRm2vURw6a3-Vk' 
+                : 'pk_Kb8y4_TClsws5IXzViN2uAH2axS7VrdwuCncELVA',
             'recordID': recordID,
             'override': override,
             'timestamp': timestamp
@@ -145,8 +165,12 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Show success state
-                    showState('successState');
+                    // Show appropriate success state
+                    if (action === 'deny') {
+                        showState('denialState');
+                    } else {
+                        showState('approvalState');
+                    }
                 } else {
                     // Show error state
                     showState('errorState');
