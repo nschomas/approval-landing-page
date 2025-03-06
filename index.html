@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approval Confirmation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+        }
+        .message {
+            margin: 20px 0;
+            font-size: 18px;
+            color: #555;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thank You</h1>
+        <p class="message">Your request is being processed.</p>
+        <div class="loader"></div>
+        <p id="status">Submitting approval...</p>
+    </div>
+
+    <script>
+        // Function to get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Get parameters from URL
+        const recordID = getUrlParameter('recordID');
+        const override = getUrlParameter('override');
+        const timestamp = getUrlParameter('timestamp');
+        
+        // Construct the Power Automate URL with parameters
+        const powerAutomateUrl = 'https://prod-46.westus.logic.azure.com/workflows/bd5f6e1df25f4713aa11684c72ec246f/triggers/manual/paths/invoke';
+        
+        // Prepare the query parameters
+        const queryParams = new URLSearchParams({
+            'api-version': '2016-06-01',
+            'sp': '/triggers/manual/run',
+            'sv': '1.0',
+            'sig': 'pk_Kb8y4_TClsws5IXzViN2uAH2axS7VrdwuCncELVA',
+            'recordID': recordID,
+            'override': override,
+            'timestamp': timestamp
+        });
+        
+        // Complete URL
+        const completeUrl = `${powerAutomateUrl}?${queryParams.toString()}`;
+        
+        // Send GET request to Power Automate
+        fetch(completeUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                document.getElementById('status').textContent = 'Approval successfully processed!';
+            } else {
+                document.getElementById('status').textContent = 'There was an issue processing your approval. Please contact support.';
+            }
+        })
+        .catch(error => {
+            document.getElementById('status').textContent = 'Error connecting to the approval system. Please try again later.';
+            console.error('Error:', error);
+        });
+    </script>
+</body>
+</html>
