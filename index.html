@@ -44,14 +44,53 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .success-checkmark {
+            display: none;
+            color: #4CAF50;
+            font-size: 60px;
+            margin: 20px auto;
+        }
+        .error-icon {
+            display: none;
+            color: #F44336;
+            font-size: 60px;
+            margin: 20px auto;
+        }
+        .processing-state {
+            display: block;
+        }
+        .success-state {
+            display: none;
+        }
+        .error-state {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Thank You</h1>
-        <p class="message">Your request is being processed.</p>
-        <div class="loader"></div>
-        <p id="status">Submitting approval...</p>
+        
+        <!-- Processing State -->
+        <div id="processingState" class="processing-state">
+            <p class="message">Your request is being processed...</p>
+            <div class="loader"></div>
+            <p id="processingStatus">Submitting approval...</p>
+        </div>
+        
+        <!-- Success State -->
+        <div id="successState" class="success-state">
+            <p class="message">Your approval has been successfully processed!</p>
+            <div class="success-checkmark">✓</div>
+            <p>The request has been approved and the requester will be notified.</p>
+        </div>
+        
+        <!-- Error State -->
+        <div id="errorState" class="error-state">
+            <p class="message">There was an issue processing your approval.</p>
+            <div class="error-icon">⚠</div>
+            <p id="errorMessage">Please contact support for assistance.</p>
+        </div>
     </div>
 
     <script>
@@ -62,11 +101,23 @@
             var results = regex.exec(location.search);
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
+        
+        // Function to show specific state and hide others
+        function showState(stateToShow) {
+            document.getElementById('processingState').style.display = 'none';
+            document.getElementById('successState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            
+            document.getElementById(stateToShow).style.display = 'block';
+        }
 
         // Get parameters from URL
         const recordID = getUrlParameter('recordID');
         const override = getUrlParameter('override');
         const timestamp = getUrlParameter('timestamp');
+        
+        // Initially show processing state only
+        showState('processingState');
         
         // Construct the Power Automate URL with parameters
         const powerAutomateUrl = 'https://prod-46.westus.logic.azure.com/workflows/bd5f6e1df25f4713aa11684c72ec246f/triggers/manual/paths/invoke';
@@ -86,23 +137,30 @@
         const completeUrl = `${powerAutomateUrl}?${queryParams.toString()}`;
         
         // Send GET request to Power Automate
-        fetch(completeUrl, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                document.getElementById('status').textContent = 'Approval successfully processed!';
-            } else {
-                document.getElementById('status').textContent = 'There was an issue processing your approval. Please contact support.';
-            }
-        })
-        .catch(error => {
-            document.getElementById('status').textContent = 'Error connecting to the approval system. Please try again later.';
-            console.error('Error:', error);
-        });
+        setTimeout(() => {
+            fetch(completeUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Show success state
+                    showState('successState');
+                } else {
+                    // Show error state
+                    showState('errorState');
+                    document.getElementById('errorMessage').textContent = 'Error code: ' + response.status + '. Please contact support.';
+                }
+            })
+            .catch(error => {
+                // Show error state
+                showState('errorState');
+                document.getElementById('errorMessage').textContent = 'Connection error. Please try again later.';
+                console.error('Error:', error);
+            });
+        }, 1500); // Add a slight delay for better user experience
     </script>
 </body>
 </html>
